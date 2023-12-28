@@ -1,139 +1,188 @@
 #include <iostream>
-#include <cmath>
 #include <vector>
+#include <math.h>
 
-std::vector<std::vector<double>> matrix_A(int n, double h) {
-    std::vector<std::vector<double>> matrix;
+std::vector <double> progonka(int n, double h, double alpha);
+std::vector <std::vector <double>> inv_matr(int n, std::vector <std::vector<double>> matr);
 
-    for (int i = 0; i != n; i++) {
-        std::vector<double> v;
-        for (int j = 0; j != n; j++) {
-            v.push_back(0.0);
-        }
-        matrix.push_back(v);
-    }
-
-    for (int i = 0; i < n; i++) {
-        double x_i = i * h;
-        double sinh_xi = sinh(x_i);
-
-        matrix[i][i] = -2.0 - (x_i * h * h + sinh_xi) / (h * h); 
-
-        if (i > 0) {
-            matrix[i][i - 1] = 1.0 - sinh_xi / (2.0 * h); 
-        }
-        if (i < n - 1) {
-            matrix[i][i + 1] = 1.0 + sinh_xi / (2.0 * h);
-        }
-    }
-
-    
-    matrix[0][0] = 1.0 - sinh(0) / (2.0 * h); 
-    matrix[0][1] = 1.0 + sinh(0) / (2.0 * h);
-    matrix[n - 1][n - 2] = 1.0 - sinh(1) / (2.0 * h);
-    matrix[n - 1][n - 1] = 1.0 + sinh(1) / (2.0 * h); 
-        
-    return matrix;
-}
-
-std::vector<double> solveGauss(std::vector<std::vector<double>> A, std::vector<double> b) {
-    int n = b.size();
-
-    for (int i = 0; i < n; i++) {
-        double maxEl = fabs(A[i][i]);
-        int maxRow = i;
-        for (int k = i + 1; k < n; k++) {
-            if (fabs(A[k][i]) > maxEl) {
-                maxEl = fabs(A[k][i]);
-                maxRow = k;
-            }
-        }
-
-        for (int k = i; k < n; k++) {
-            double tmp = A[maxRow][k];
-            A[maxRow][k] = A[i][k];
-            A[i][k] = tmp;
-        }
-        double tmp = b[maxRow];
-        b[maxRow] = b[i];
-        b[i] = tmp;
-
-        for (int k = i + 1; k < n; k++) {
-            double coeff = -A[k][i] / A[i][i];
-            for (int j = i; j < n; j++) {
-                if (i == j) {
-                    A[k][j] = 0.0;
-                }
-                else {
-                    A[k][j] += coeff * A[i][j];
-                }
-            }
-            b[k] += coeff * b[i];
-        }
-    }
-
-    std::vector<double> x(n);
-    for (int i = n - 1; i >= 0; i--) {
-        x[i] = b[i] / A[i][i];
-        for (int k = i - 1; k >= 0; k--) {
-            b[k] -= A[k][i] * x[i];
-        }
-    }
-
-    return x;
-}
-
-std::vector<double> vector_b(int n, double h) {
-    std::vector<double> vec(n, 0.0);
-
-    for (int i = 0; i < n; i++) {
-        double x_i = i * h;
-        vec[i] = -x_i * (x_i + 1) * h * h; 
-    }
-
-   
-    vec[0] -= (1.0 - sinh(0) / (2.0 * h)); 
-    vec[n - 1] -= (1.0 + sinh(1) / (2.0 * h));
-
-    return vec;
-}
-
-double dist(int n, double h, std::vector<double>& u, std::vector<double>& u1)
-{
-    double sum = 0.0;
-    for (int i = 0; i != n; i++)
-    {
-        sum += h * (u1[i] - u[i]) * (u1[i] - u[i]);
-    }
-    return sum;
-}
 int main() {
-    int n = 11;
-    double h = 0.1;
-    double epsilon = 1e-6; // Заданная точность
+	int n = 600, i;
+	double alpha = 1, default_value = 0, h = 1.0 / (n - 1);
+	std::vector <double> u(n, default_value);
+	std::vector <double> u_n(n, default_value);
+	std::vector <double> u_nk(n, default_value);
 
-    std::vector<std::vector<double>> matrix = matrix_A(n, h);
-    std::vector<double> vec = vector_b(n, h);
+	u_nk = progonka(n, h, alpha);
 
-    std::vector<double> solution = solveGauss(matrix, vec);
-
-    std::vector<double> initial_solution(n, 0.0); 
-
-  
-
-    std::vector<double> previous_solution = initial_solution;
-
-    while (dist(n, h, solution, previous_solution) >= epsilon) {
-        previous_solution = solution;
-        vec = vector_b(n, h);
-        solution = solveGauss(matrix, vec);
-    }
+	for (i = 0; i < n; i++)std::cout << "u[" << i << "] = " << u_nk[i] << std::endl;
+	std::cout << std::endl;
 
 
-    std::cout << "\nSolution:" << "\n";
-    for (int i = 0; i < n; i++) {
-        std::cout << "x[" << i << "]= " << solution[i] << "\n";
-    }
+	return 0;
+}
 
-    return 0;
+
+std::vector <double> progonka(int n, double h, double alpha) {
+	int i, j, k1 = 0;
+	double default_value = 0, sum = 0, eps = 1e-6, sum1;
+	std::vector <std::vector<double>> A(n, std::vector<double>(n, default_value));
+	std::vector <std::vector<double>> inv_A(n, std::vector<double>(n, default_value));
+	std::vector <double> u_n(n, default_value);
+	std::vector <double> u_nk(n, default_value);
+
+
+	for (i =0; i < n; i++) {
+		for (j = 0; j < n; j++) {
+			if (i == j)A[i][j] = -2.0 / pow(h, 2) +h*i ;
+			else if (i == j + 1)A[i][j] = 1.0 / pow(h, 2) ;
+			else if (i == j - 1)A[i][j] = 1.0 / pow(h, 2) ;
+			else A[i][j] = 0;
+		}
+	}
+
+	for (j = 0; j < n; j++) {
+		A[0][j] = 0;
+		A[n - 1][j] = 0;
+	}
+
+	A[0][0] = -1 / (2 * h);
+		A[0][2] = 1 / (2 * h);
+	A[n - 1][n - 3] = -1.0/ (2 * h);
+	A[n - 1][n - 1] = 1.0 / (2 * h);
+
+	inv_A = inv_matr(n, A);
+
+	for (i = 0; i < n; i++) {
+		u_n[i] =   sinh(h*i)-i*h;
+	}
+	u_n[0] = -1;
+	u_n[n - 1] = 1;
+
+	/*
+	for(i = 0; i < n; i++){
+		std::cout << u_n[i] << " ";
+	}
+	std::cout << std::endl;
+	*/
+
+	for (i = 0; i < n; i++) {
+		for (j = 0; j < n; j++) {
+			u_nk[i] += inv_A[i][j] * u_n[j];
+		}
+	}
+
+	/*
+	for(i = 0; i < n; i++)std::cout << u_nk[i] << " ";
+	std::cout << std::endl;
+	*/
+
+	while (k1 < 100) {
+		for (i = 1; i < n-1; i++) {
+			u_n[i] = (((-sinh(i * h) * (u_nk[i + 1] - u_nk[i - 1])) / (2 * h)) - i * h);
+
+			//u_n[i] = -sinh(i * h) * (u_nk[i + 1] - u_nk[i - 1])/(2*h)-i*h;
+			//u_n[i] = -pow((i * h), 2) * u_nk[i] - pow(i * h, 2);
+		}
+
+		u_n[0] = -1;
+		u_n[n - 1] = 1;
+
+		for (i = 0; i < n; i++) {
+			u_nk[i] = 0;
+			for (j = 0; j < n; j++) {
+				u_nk[i] += inv_A[i][j] * u_n[j];
+			}
+		}
+
+		for (i = 0; i < n - 1; i++) {
+			sum += h * pow((u_nk[i + 1] - u_nk[i]), 2);
+			sum1 = sum;
+		}
+		//std::cout << "sum = " << sum << std::endl;
+		if (sum < eps)break;
+		else {
+			sum = 0;
+		}
+		k1++;
+	}
+	k1 = 0;
+
+	std::cout << "sum = " << sum1 << std::endl << std::endl;
+
+	return u_nk;
+}
+
+std::vector <std::vector <double>> inv_matr(int n, std::vector <std::vector<double>> matr) {
+	int i, j, m, max_i;
+	double max_a, b, del, default_value;
+	default_value = 0.0;
+	std::vector <std::vector<double>> ematr(n, std::vector<double>(n, default_value));
+
+	for (i = 0; i < n; i++) {
+		for (j = 0; j < n; j++) {
+			if (i == j)ematr[i][j] = 1;
+			else ematr[i][j] = 0;
+		}
+	}
+
+	for (m = 0; m < n - 1; m++) {
+		max_a = matr[m][m];
+
+		for (i = m + 1; i < n; i++) {
+			if (fabs(max_a) < fabs(matr[i][m])) { max_i = i; max_a = matr[i][m]; }
+		}
+
+		if (max_i != m) {
+			for (j = 0; j < n; j++) {
+				b = matr[m][j]; matr[m][j] = matr[max_i][j]; matr[max_i][j] = b;
+				b = ematr[m][j]; ematr[m][j] = ematr[max_i][j]; ematr[max_i][j] = b;
+			}
+		}
+
+		for (i = m + 1; i < n; i++) {
+			del = matr[i][m] / matr[m][m];
+			for (j = 0; j < n; j++) {
+				matr[i][j] -= del * matr[m][j];
+				ematr[i][j] -= del * ematr[m][j];
+			}
+		}
+	}
+
+	for (i = 0; i < n; i++) {
+		del = matr[i][i];
+		for (j = 0; j < n; j++) {
+			matr[i][j] /= del;
+			ematr[i][j] /= del;
+		}
+	}
+
+	for (m = n - 1; m > 0; m--) {
+		for (i = 0; i < m; i++) {
+			del = matr[i][m] / matr[m][m];
+			for (j = 0; j < n; j++) {
+				matr[i][j] -= del * matr[m][j];
+				ematr[i][j] -= del * ematr[m][j];
+			}
+		}
+	}
+
+	for (i = 0; i < n; i++) {
+		del = matr[i][i];
+		for (j = 0; j < n; j++) {
+			matr[i][j] /= del;
+			ematr[i][j] /= del;
+		}
+	}
+
+	/*
+	for(int k = 0; k < n; k++){
+		for(int l = 0; l < n; l++)std::cout << matr[k][l] << " ";
+		std::cout << "\t|";
+		for(int l = 0; l < n; l++)std::cout << ematr[k][l] << " ";
+		std::cout << std::endl;
+	}
+	std::cout << std::endl;
+	*/
+
+	return ematr;
 }
